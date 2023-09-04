@@ -15,7 +15,7 @@ Here's how you can contribute to SX-VERUS-MINER-GUI:
 2. Clone Your Fork: Use Git to clone your forked repository to your local machine.
 
    ```shell
-   git clone https://github.com/your-username/SX-VERUS-MINER-GUI.git
+   git clone https://github.com/SwirX/SX-VERUS-MINER-GUI.git
    ```
 
 3. Create a Branch: Create a new branch for your contribution.
