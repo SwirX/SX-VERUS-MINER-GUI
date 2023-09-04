@@ -37,10 +37,6 @@ You can configure various settings using the GUI, including:
 - Number of CPU cores to dedicate to mining
 - Worker name
 
-## Documentation
-
-For detailed usage instructions, please refer to the [documentation](link-to-documentation).
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
