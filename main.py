@@ -474,9 +474,9 @@ if __name__ == "__main__":
     app.protocol("WM_DELETE_WINDOW", app.onDelete)
     # set theme
     if settings['theme'] == "sv":
-        app.call("source", "sv.tcl")
+        app.call("source", "themes/sv.tcl")
     elif settings['theme'] == "azure":
-        app.call("source", "azure.tcl")
+        app.call("source", "themes/azure.tcl")
     # set mode
     if settings["darkmode"]:
         app.tk.call("set_theme", "dark")
