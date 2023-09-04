@@ -76,6 +76,7 @@ class App(tk.Tk):
         self.miningpage_frame = ttk.Frame(self)
         self.stop_mining_button = ttk.Button(self.miningpage_frame, text="Stop Mining", command=self.stop_mining)
         self.blocks_label = ttk.Label(self.miningpage_frame, textvariable=self.blocks_mined_value)
+        self.mining_speed_label = ttk.Label(self.miningpage_frame, textvariable=self.mining_speed_value)
         self.temperature_label = ttk.Label(self.miningpage_frame, textvariable=self.temperature)
         self.elapsed_time_label = ttk.Label(self.miningpage_frame, textvariable=self.elapsed_time_value)
         self.difficulty_label = ttk.Label(self.miningpage_frame, textvariable=self.difficulty_value)
@@ -142,7 +143,8 @@ class App(tk.Tk):
         # self.miningpage_frame.pack(fill="both")
         self.stop_mining_button.pack(padx=5)
         self.blocks_label.pack()
-        self.temperature_label.pack()
+        self.mining_speed_label.pack()
+        # self.temperature_label.pack()
         self.current_working_thread_label.pack()
         self.elapsed_time_label.pack()
         self.difficulty_label.pack()
@@ -319,6 +321,8 @@ class App(tk.Tk):
             result += f'{minutes} minutes '
         elif minutes == 1:
             result += f'{minutes} minute'
+        else:
+            result = "just started"
         return result
 
     def toggle_output(self):
@@ -380,6 +384,17 @@ class App(tk.Tk):
                 line = clean_line
                 self.output_text.insert(tk.END, clean_line)
                 self.output_text.see(tk.END)  # Scroll to the end to show the latest output
+                out = self.output_text.get("1.0", "end")
+                print(out)
+                out = out.replace("*************************************************************\n"
+                                  "*  ccminer CPU: 3.8.3 for Verushash v2.2 based on ccminer   *\n"
+                                  "*************************************************************\n"
+                                  "Originally based on Christian Buchner and Christian H. project\n"
+                                  "Adapted to Verus by Monkins1010\n"
+                                  "Goto https://wiki.verus.io/#!index.md for mining setup guides.\n"
+                                  "Git repo located at: http://github.com/monkins1010/ccminer\n",
+                                  "")
+                self.output_text.insert(tk.END, out)
 
                 # Parse the line to extract useful information
                 if "accepted:" in line:
@@ -408,7 +423,6 @@ class App(tk.Tk):
             process.terminate()
             print("Mining process stopped by the user.")
 
-
         # Start the mining thread
         self.mining_thread = threading.Thread(target=capture_output)
         self.mining_thread.daemon = True
@@ -424,6 +438,7 @@ class App(tk.Tk):
             # print("Mining Thread Terminated")
             # print("killing the miner process...")
             self.kill_miner_process()
+            self.output_text.delete("1.0", "end")
             self.blocks_mined_value.set("blocks mined")
             self.elapsed_time_value.set("elapsed time")
             self.difficulty_value.set("difficulty")
@@ -443,7 +458,7 @@ class App(tk.Tk):
                     # Terminate the process
                     process_obj = psutil.Process(process.info['pid'])
                     process_obj.terminate()
-                    # print(f"Killed process '{process_name}' with PID {process.info['pid']}")
+                    print(f"Killed process '{process_name}' with PID {process.info['pid']}")
                 except Exception as e:
                     print(f"Failed to kill process '{process_name}': {str(e)}")
 
@@ -453,7 +468,7 @@ class App(tk.Tk):
                                                  message='Are you sure that you want to quit?\n'
                                                          f'{self.blocks_mined_value.get()}\n'
                                                          f'{self.difficulty_value.get()}\n'
-                                                         f'{self.mining_speed_value}')
+                                                         f'{self.mining_speed_value.get()}')
             if answer:
                 self.running.set(False)
                 self.kill_miner_process()
