@@ -48,6 +48,7 @@ Contributions to this project are welcome. Please follow our [contribution guide
 ## Acknowledgments
 
 - Thanks to [Monkins1010](https://github.com/Monkins1010) for the mining software that this GUI is built upon.
+- Also thanks to [rdbende](https://github.com/rdbende) for the Sun Valley Theme that this app is using.
 
 ## Support
 
