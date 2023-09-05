@@ -56,3 +56,18 @@ If you encounter any issues or have questions, please [open an issue](https://gi
 ## Disclaimer
 
 This software is provided as-is with no warranty. Use it at your own risk.
+
+## Changelog
+
+### Version 1.2 (Latest)
+
+- Added the ability to change the appearance mode (light/dark mode).
+- Added a mining timer that you can enable or disable.
+
+### Version 1.1
+
+- Added the output toggle in the mining screen.
+
+### Version 1.0 (Initial Release)
+
+- Initial release of SX-VERUS-MINER-GUI.
