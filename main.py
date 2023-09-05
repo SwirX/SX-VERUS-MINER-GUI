@@ -10,6 +10,7 @@ import json
 import psutil
 import regex.regex
 import checkwallet
+import platform
 
 with open("./settings.json", "r") as settingsfile:
     settings = json.load(settingsfile)
@@ -18,8 +19,9 @@ with open("./settings.json", "r") as settingsfile:
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title = "SX-VerusMiner"
+        self.title("SX-VerusMiner")
         self.geometry("500x600")
+        self.iconbitmap("./icon.ico")
         # values
         self.running = tk.BooleanVar()
         self.status_value = tk.StringVar()
@@ -29,6 +31,10 @@ class App(tk.Tk):
         self.wallet_address = tk.StringVar()
         self.pool_address = tk.StringVar()
         self.worker_name = tk.StringVar()
+        self.timer_switch_value = tk.BooleanVar()
+        self.timer_value = tk.StringVar()
+        self.time_type_value = tk.StringVar()
+        self.waiting_time = tk.IntVar()
         self.mining_cmd = tk.StringVar()
         self.mining_cmd_template = tk.StringVar()
         self.output_visible = tk.BooleanVar()
@@ -42,12 +48,17 @@ class App(tk.Tk):
         self.current_working_thread = tk.StringVar()
         self.temperature = tk.StringVar()
         self.output_queue = multiprocessing.Queue()
+        self.theme_value = tk.StringVar()
+        self.light_mode_toggle_value = tk.BooleanVar()
+        self.dark_mode_toggle_value = tk.BooleanVar()
 
         self.homepage_button_text = tk.StringVar()
 
         # set values
         self.running.set(True)
         self.output_visible.set(False)
+        self.timer_switch_value.set(False)
+        self.time_type_value.set("Hours")
         self.blocks_mined_value.set("blocks mined")
         self.elapsed_time_value.set("elapsed time")
         self.difficulty_value.set("difficulty")
@@ -55,14 +66,12 @@ class App(tk.Tk):
         self.current_working_thread.set("current working core")
         self.temperature.set("Couldn't retreive the temperature")
         self.homepage_button_text.set("Start Mining")
+        self.theme_value.set(settings["theme"])
+        self.light_mode_toggle_value.set(not settings["darkmode"])
+        self.dark_mode_toggle_value.set(settings["darkmode"])
 
         # get max cores count
-        self.max_cores.set(psutil.cpu_count(logical=False))
-
-        #   styles
-        # ComboBoxes
-        custom_style = ttk.Style()
-        custom_style.configure("Custom.TCombobox", selectbackground="#ffffff", selectforeground="#000000")
+        self.max_cores.set(psutil.cpu_count())
 
         # Homepage
         self.homepage_frame = ttk.Frame(self)
@@ -124,8 +133,16 @@ class App(tk.Tk):
         self.save_settings_button = ttk.Button(self.settingspage_frame, text="Save Changes", command=self.save_settings)
 
         # Misc
-        self.temperature_control_frame = ttk.LabelFrame(self.settingspage_frame, text="Temperature Control Center")
-        self.temperature_control_switch = ttk.Checkbutton(self.temperature_control_frame, text="Toggle")
+        self.miscpage_frame = ttk.Frame(self.settingspage_frame)
+        #timer
+        self.timer_control_frame = ttk.LabelFrame(self.miscpage_frame, text="Timer Control Center")
+        self.timer_control_switch = ttk.Checkbutton(self.timer_control_frame, text="Toggle", variable=self.timer_switch_value)
+        self.timer_entry = ttk.Entry(self.timer_control_frame, textvariable=self.timer_value, width=30, justify="center")
+        self.time_type_selection = ttk.Combobox(self.timer_control_frame, values=["Days", "Hours", "Minutes"], width=8, textvariable=self.time_type_value, state="readonly")
+        #theme
+        self.theme_customization_frame = ttk.LabelFrame(self.miscpage_frame, text="Themes")
+        self.theme_customization_selection = ttk.Combobox(self.theme_customization_frame, values=["Sun Valley", "Azure"], textvariable=self.theme_value)
+        self.change_mode_button = ttk.Button(self.theme_customization_frame, text="Change Mode", command=self.show_modes)
 
         # navigationBar Page
         self.navigation_frame = ttk.Frame(self)
@@ -169,14 +186,22 @@ class App(tk.Tk):
         self.worker_name_entry_label.pack()
         self.worker_name_entry.pack()
         self.save_settings_button.pack(pady=5)
-        self.temperature_control_frame.pack(pady=5)
-        self.temperature_control_switch.pack()
+        #misc
+        self.miscpage_frame.pack()
+        self.timer_control_frame.pack()
+        self.timer_entry.pack(side="left")
+        self.time_type_selection.pack()
+        self.theme_customization_frame.pack()
+        # self.theme_customization_selection.pack()
+        self.change_mode_button.pack()
 
         # binding functions
         self.pools_option_choices.bind("<<ComboboxSelected>>", self.on_pool_select)
         self.pool_address_entry.bind("<Return>", self.on_pool_entry)
         self.wallet_address_entry.bind("<Return>", self.on_wallet_entry)
         self.worker_name_entry.bind("<Key>", self.on_worker_name_entry)
+        self.time_type_selection.bind("<<ComboboxSelected>>", self.set_timer)
+        self.theme_customization_selection.bind("<<ComboboxSelected>>", self.change_theme)
 
         # initialising values
         # self.update_info()
@@ -187,6 +212,29 @@ class App(tk.Tk):
     # functions
     def update_info(self):
         self.miningstatus.set(settings["mining"])
+        # get dedicated threads count
+        ## print("getting the dedicated_cores count")
+        self.dedicated_cores.set(settings["cores"])
+
+        # get wallet address
+        ## print("getting wallet address")
+        self.wallet_address.set(settings["walletAddress"])
+
+        # get pool address
+        ## print("getting pool address")
+        self.pool_address.set(settings["poolAddress"])
+        self.pools_option_choices.set(self.pool_address.get())
+
+        # get worker name
+        ## print("getting worker name")
+        self.worker_name.set(settings["workerName"])
+
+        # get mining commands
+        ## print("getting mining commands")
+        self.mining_cmd.set(settings["miningCmd"])
+        self.mining_cmd_template.set(settings["miningCmdTemplate"])
+
+        # Actively getting the mining status
         while self.running.get():
             ## print("updating the info")
             # update is mining label
@@ -199,28 +247,6 @@ class App(tk.Tk):
                 # print("mining is inactive")
                 self.status_value.set("Inactive")
                 self.mining_status_label.configure(background="#fca311", foreground="black")
-
-            # get dedicated threads count
-            ## print("getting the dedicated_cores count")
-            self.dedicated_cores.set(settings["cores"])
-
-            # get wallet address
-            ## print("getting wallet address")
-            self.wallet_address.set(settings["walletAddress"])
-
-            # get pool address
-            ## print("getting pool address")
-            self.pool_address.set(settings["poolAddress"])
-            self.pools_option_choices.set(self.pool_address.get())
-
-            # get worker name
-            ## print("getting worker name")
-            self.worker_name.set(settings["workerName"])
-
-            # get mining commands
-            ## print("getting mining commands")
-            self.mining_cmd.set(settings["miningCmd"])
-            self.mining_cmd_template.set(settings["miningCmdTemplate"])
 
             # getting cpu temperature
             # self.temperature.set(self.get_cpu_temperature())
@@ -235,6 +261,42 @@ class App(tk.Tk):
         self.settingspage_frame.pack_forget()
         self.miningpage_frame.pack_forget()
         self.homepage_frame.pack(fill="both")
+        self.set_timer("e")
+
+    def show_modes(self):
+        self.modes_frame = tk.Toplevel()
+        self.modes_frame.title("Select Mode")
+
+
+        def light_on_toggle():
+            if self.light_mode_toggle_value.get():
+                self.light_mode_toggle.configure(state="disabled")
+                self.dark_mode_toggle.configure(state="")
+            self.dark_mode_toggle_value.set(not self.light_mode_toggle_value.get())
+        def dark_on_toggle():
+            if self.dark_mode_toggle_value.get():
+                self.dark_mode_toggle.configure(state="disabled")
+                self.light_mode_toggle.configure(state="")
+            self.light_mode_toggle_value.set(not self.dark_mode_toggle_value.get())
+
+        self.light_mode_toggle = ttk.Checkbutton(self.modes_frame, variable=self.light_mode_toggle_value, text="Light mode", command=light_on_toggle)
+        self.dark_mode_toggle = ttk.Checkbutton(self.modes_frame, variable=self.dark_mode_toggle_value, text="Dark mode", command=dark_on_toggle)
+
+        self.light_mode_toggle.pack()
+        self.dark_mode_toggle.pack()
+
+        if self.dark_mode_toggle_value.get():
+            self.dark_mode_toggle.configure(state="disabled")
+            self.light_mode_toggle.configure(state="")
+        else:
+            self.light_mode_toggle.configure(state="disabled")
+            self.dark_mode_toggle.configure(state="")
+        def onDestroy():
+            settings["darkmode"] = self.dark_mode_toggle_value.get()
+            self.set_theme("mode")
+            self.modes_frame.destroy()
+
+        self.modes_frame.protocol("WM_DELETE_WINDOW", onDestroy)
 
     def set_slider(self, event):
         self.dedicated_cores.set(round(self.dedicated_cores.get()))
@@ -293,6 +355,53 @@ class App(tk.Tk):
         f.close()
         # print("settings saved")
 
+    def change_theme(self, event):
+        settings["theme"] = self.theme_value.get()
+        print("value in the settings: ", settings["theme"])
+        print("value set by the user: ", self.theme_value.get())
+        self.set_theme("theme")
+
+    def set_theme(self, mode):
+        # set theme
+        if mode == "theme":
+            if settings['theme'] == "Sun Valley":
+                self.call("source", "themes/sv.tcl")
+            elif settings['theme'] == "azure":
+                self.call("source", "themes/azure.tcl")
+        # set mode
+        elif mode == "mode":
+            if settings["darkmode"]:
+                self.tk.call("set_theme", "dark")
+            else:
+                self.tk.call("set_theme", "light")
+        elif mode == "both":
+            if settings['theme'] == "Sun Valley":
+                self.call("source", "themes/sv.tcl")
+            elif settings['theme'] == "azure":
+                self.call("source", "themes/azure.tcl")
+            if settings["darkmode"]:
+                self.tk.call("set_theme", "dark")
+            else:
+                self.tk.call("set_theme", "light")
+
+    def set_timer(self, event):
+        if self.miningstatus.get():
+            self.show_custom_warning("You already started mining can't set the timer now")
+            print("you are already mining can't set a timer")
+            return
+        timer_text = self.timer_value.get()
+        if timer_text == "":
+            return
+        time_type = self.time_type_value.get()
+        converting_value = 1
+        if time_type == "Hours":
+            converting_value = 60
+        elif time_type == "Days":
+            converting_value = 24 * 60
+        self.waiting_time.set(int(timer_text) * converting_value)
+        print("timer set", timer_text, time_type)
+
+
     def start_elapsed_time(self):
         self.mining_start_timestamp.set(int(time.time()))
 
@@ -343,7 +452,7 @@ class App(tk.Tk):
         label.pack(padx=20, pady=20)
 
         # Create an "OK" button to close the custom warning dialog
-        ok_button = tk.Button(custom_warning, text="OK", command=custom_warning.destroy)
+        ok_button = ttk.Button(custom_warning, text="OK", command=custom_warning.destroy)
         ok_button.pack(pady=10)
 
     # start mining
@@ -367,6 +476,8 @@ class App(tk.Tk):
         self.miningpage_frame.pack(fill="both")
         self.homepage_button_text.set("Return to the mining page")
 
+        target_time = int(time.time()) + self.waiting_time.get()
+
         # Function to capture and display the miner output
         def capture_output():
             # print("starting the mining process in a new thread")
@@ -378,23 +489,16 @@ class App(tk.Tk):
                 if self.miningstatus.get() != True:
                     # print("mining is set to false breaking the loop")
                     break
+                if int(time.time()) == target_time:
+                    print("timer finished")
+                    self.stop_mining()
+                    break
                 # Remove ANSI escape codes from the line
                 # print("cleaning the line")
                 clean_line = ansi_escape.sub('', line)
                 line = clean_line
                 self.output_text.insert(tk.END, clean_line)
                 self.output_text.see(tk.END)  # Scroll to the end to show the latest output
-                out = self.output_text.get("1.0", "end")
-                print(out)
-                out = out.replace("*************************************************************\n"
-                                  "*  ccminer CPU: 3.8.3 for Verushash v2.2 based on ccminer   *\n"
-                                  "*************************************************************\n"
-                                  "Originally based on Christian Buchner and Christian H. project\n"
-                                  "Adapted to Verus by Monkins1010\n"
-                                  "Goto https://wiki.verus.io/#!index.md for mining setup guides.\n"
-                                  "Git repo located at: http://github.com/monkins1010/ccminer\n",
-                                  "")
-                self.output_text.insert(tk.END, out)
 
                 # Parse the line to extract useful information
                 if "accepted:" in line:
@@ -473,29 +577,27 @@ class App(tk.Tk):
                 self.running.set(False)
                 self.kill_miner_process()
                 time.sleep(.5)
+                self.save_settings()
                 self.destroy()
                 exit()
         else:
             self.running.set(False)
             time.sleep(.5)
+            self.save_settings()
             self.destroy()
             exit()
 
 
 if __name__ == "__main__":
-    app = App()
+    if platform.system() != "Windows":
+        tkinter.messagebox.showwarning("Error", "Appologies but this app only supports Windows at the moment")
+        exit()
 
+    # get the app
+    app = App()
+    # set the theme
+    app.set_theme("both")
     # handle exiting
     app.protocol("WM_DELETE_WINDOW", app.onDelete)
-    # set theme
-    if settings['theme'] == "sv":
-        app.call("source", "themes/sv.tcl")
-    elif settings['theme'] == "azure":
-        app.call("source", "themes/azure.tcl")
-    # set mode
-    if settings["darkmode"]:
-        app.tk.call("set_theme", "dark")
-    else:
-        app.tk.call("set_theme", "light")
-
+    # start the app
     app.mainloop()
